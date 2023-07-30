@@ -1,0 +1,101 @@
+1)db.js:
+
+const { MongoClient } = require('mongodb');
+
+const uri = 'mongodb+srv://TanaY:tanayatlas%40787@cluster787.eeytmlj.mongodb.net/my-database?retryWrites=true&w=majority';
+
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+async function connect() {
+try {
+await client.connect();
+console.log('Connected to MongoDB Atlas');
+} catch (error) {
+console.error(error);
+}
+}
+
+module.exports = client;
+------------------------------------------------------------------------------------------------------------------------------
+
+2) server.js:
+
+const express = require('express');
+const { insertMessage, getMessages } = require('./chat');
+
+const app = express();
+app.use(express.json());
+
+app.post('/chat', async (req, res) => {
+  const message = req.body;
+  await insertMessage(message);
+  res.sendStatus(201);
+});
+
+app.get('/chat', async (req, res) => {
+  const messages = await getMessages();
+  res.json(messages);
+});
+
+app.listen(3000, () => {
+  console.log('Server started on port 3000');
+});
+
+------------------------------------------------------------------------------------------------------------------------------
+
+3) chat.js
+
+const client = require('./db');
+
+async function insertMessage(message) {
+  const collection = client.db('my-database').collection('my-collection');
+  await collection.insertOne(message);
+  console.log('Inserted message:', message);
+}
+
+async function getMessages() {
+  const collection = client.db('my-database').collection('my-collection');
+  const messages = await collection.find().toArray();
+  console.log('Retrieved messages:', messages);
+  return messages;
+}
+
+module.exports = { insertMessage, getMessages };
+
+------------------------------------------------------------------------------------------------------------------------------
+
+4) chat.component.js
+
+import axios from 'axios';
+
+function Chat() {
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    axios.get('/chat')
+      .then(response => setMessages(response.data))
+      .catch(error => console.error(error));
+  }, []);
+
+  function sendMessage() {
+    const message = { text: 'Hello, world!' };
+    axios.post('/chat', message)
+      .then(() => console.log('Message sent'))
+      .catch(error => console.error(error));
+  }
+
+  return (
+    <div>
+      <ul>
+        {messages.map(message => (
+          <li key={message._id}>{message.text}</li>
+        ))}
+      </ul>
+      <button onClick={sendMessage}>Send message</button>
+    </div>
+  );
+}
+
+export default Chat;
+
+------------------------------------------------------------------------------------------------------------------------------
